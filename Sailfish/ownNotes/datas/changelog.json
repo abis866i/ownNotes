@@ -316,5 +316,11 @@
       "type": "bug"
     }
   ], 
+  "1.9.3": [
+    {
+      "text": "Recompiled for QT5",
+      "type": "bug"
+    }
+  ],
   "null": []
 }

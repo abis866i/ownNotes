@@ -2,113 +2,84 @@ import QtQuick 2.0
 import Sailfish.Silica 1.0
 import Sailfish.Silica.theme 1.0
 import net.khertan.python 1.0
-import net.khertan.documenthandler 1.0
+//import net.khertan.documenthandler 1.0
 
 Page {
     id: page
-    allowedOrientations: Orientation.Landscape | Orientation.Portrait;
-    property alias path: textEditor.path;
-
-    Python {
-        id: noteSaver
-
-        function saveNote(filepath, data) {
-
-            console.debug('Calling saveNote')
-            var new_filepath = call('ownnotes.saveNote', [filepath, data, false]);
-            if (filepath !== new_filepath) {
-                textEditor.modified = false;
-                textEditor.load(new_filepath); }
-            else {
-                textEditor.modified = false;
-                autoTimer.stop()
-            }
-            pyNotes.requireRefresh();
-        }
-
-        onFinished: {
-            pyNotes.requireRefresh();
-        }
-        onMessage: {
-            console.log('saveNote result:' + data);
-        }
-        onException: {
-            console.log(type + ':' + data)
-            onError(type + ' : ' + data);
-        }
-        Component.onCompleted: {
-            addImportPath('/usr/share/ownNotes/python');
-            importModule('ownnotes');
-        }
-    }
-
-    Python {
-        id: noteHighlighter
-
-        onException: {
-            console.log(type + ':' +data)
-            onError(type + ' : ' + data);
-        }
-
-        Component.onCompleted: {
-            addImportPath('/usr/share/ownNotes/python');
-            importModule('ownnotes');
-        }
-    }
-
-    function publishToScriptogram() {
-        remorsePublish.execute(qsTr("Publish to Scriptogr.am"),
-                               function() { pyNotes.publishToScriptogram(documentHandler.text) } )
-    }
-    function publishAsPostToKhtCMS() {
-        remorsePublish.execute(qsTr("Publish as Post to KhtCms"),
-                               function() { pyNotes.publishAsPostToKhtCMS(documentHandler.text) } )
-    }
-    function publishAsPageToKhtCMS() {
-        remorsePublish.execute(qsTr("Publish as Page to KhtCms"),
-                               function() { pyNotes.publishAsPageToKhtCMS(documentHandler.text) } )
-    }
-
-    RemorsePopup {
-        id: remorsePublish
-    }
+    property alias path:        textEditor.path;
+    property var oldName:       textEditor.path ? pyNotes.getNoteNameNoExtension(textEditor.path) : ''
+    property var oldCategory:   textEditor.path ? pyNotes.getNoteCategory(textEditor.path) : ''
+    property var oldText:       textEditor.path ? pyNotes.getNoteBody(textEditor.path) : ''
 
     SilicaFlickable {
-        id: flick
+        id: flicker
         anchors.fill: parent
+
         contentHeight:  contentColumn.height
-        contentWidth: flick.width
+        contentWidth: flicker.width
 
         PullDownMenu {
-            visible: pyNotes.publishable();
             MenuItem {
-                text: qsTr("Publish to Scriptogr.am");
-                visible: pyNotes.get('Scriptogram','userid') !== '' ? true : false;
-                onClicked: {publishToScriptogram();}
+                text: qsTr("Save Note")
+                onClicked: {
+                    if (noteCategory.text=== oldCategory && noteName.text===oldName && textEditor.text===oldText){
+                        console.log('Note did not change');
+                    } else if(noteName.text===''){
+                        console.log('Note has empty title');
+                    } else {
+                        console.log('Note change');
+                        if(textEditor.path!='')pyNotes.remove(textEditor.path);
+                        console.debug(pyNotes.saveNoteNew(noteCategory.text,noteName.text,textEditor.text,true ));
+                        pyNotes.requireRefresh();
+                    }
+                    pageStack.push(Qt.resolvedUrl("MainPage.qml"))
+                }
             }
             MenuItem {
-                text: qsTr("Publish as Post to KhtCms");
-                visible: pyNotes.get('KhtCms','apikey') !== '' ? true : false;
-                onClicked: {publishAsPostToKhtCMS();}
+                text: qsTr("Cancel")
+                onClicked: pageStack.push(Qt.resolvedUrl("MainPage.qml"))
             }
+        }
 
-            MenuItem {
-                text: qsTr("Publish as Page to KhtCms");
-                visible: pyNotes.get('KhtCms','apikey') !== '' ? true : false;
-                onClicked: {publishAsPageToKhtCMS();}
-            }
-
+        VerticalScrollDecorator {
         }
 
         Column {
             id: contentColumn
-            anchors.top: parent.top
-            anchors.left: parent.left
-            anchors.right: parent.right
-            spacing: 5
+            anchors {
+                left: parent.left
+                right: parent.right
+                margins: 10
+            }
 
             PageHeader {
-                title: "ownNotes"
+                title: textEditor.path ? qsTr("Edit Note") : qsTr("Add Note")
+            }
+
+            TextField {
+                id:noteName
+                width: parent.width
+                label: qsTr("<b>Name</b>")
+                text: textEditor.path ? pyNotes.getNoteNameNoExtension(textEditor.path) : ''
+                placeholderText: qsTr("<b>Name</b>")
+                onTextChanged: {
+                    if( !pyNotes.text_patern_filename( noteName.text )){
+                        errorPanel.displayError("Name is not valid.")
+                    }
+                }
+            }
+            TextField {
+                id:noteCategory
+                width: parent.width
+                label: qsTr("<b>Category</b>")
+                text: textEditor.path ? pyNotes.getNoteCategory(textEditor.path) : ''
+                placeholderText: qsTr("<b>Category</b>")
+                onTextChanged: {
+                    if( !pyNotes.text_patern_category( noteCategory.text )){
+                        errorPanel.displayError("Category is not valid.")
+                    }
+
+                }
             }
 
             TextArea {
@@ -119,75 +90,15 @@ Page {
                 color: Theme.primaryColor
                 font.family: pyNotes.get('Display', 'fontfamily')
                 font.pixelSize: pyNotes.get('Display', 'fontsize')
-                text: documentHandler.text
-
-                Component.onCompleted: {
-                    var txt = pyNotes.loadNote(textEditor.path);
-                    documentHandler.text = txt;
-                    textEditor.modified = false;
-                    autoTimer.stop();
-                    textEditor.forceActiveFocus();
-                }
+                text: textEditor.path ? pyNotes.getNoteBody(textEditor.path) : ''
 
                 onTextChanged: {
-                    if (focus) {
-                        console.debug("onTextChanged")
-                        textEditor.modified = true;
-                        autoTimer.restart();
-                    }
-                }
-
-
-                Timer {
-                    id: autoTimer
-                    interval: 5000
-                    repeat: false
-                    onTriggered: {
-                        if (textEditor.modified) {
-                            noteSaver.saveNote(textEditor.path, textEditor.text);
-                        }
-                    }
-                }
-
-                DocumentHandler {
-                    id: documentHandler
-                    target: textEditor._editor
-
-                    cursorPosition: textEditor.cursorPosition
-                    selectionStart: textEditor.selectionStart
-                    selectionEnd: textEditor.selectionEnd
-                    Component.onCompleted: {
-                        documentHandler.setStyle(Theme.primaryColor, Theme.secondaryColor,
-                                                  Theme.highlightColor, Theme.secondaryHighlightColor,
-                                                  textEditor.font.pixelSize);
-
-                        var txt = pyNotes.loadNote(textEditor.path);
-                        documentHandler.text = txt;
-                        textEditor.modified = false;
-                        autoTimer.stop();
-                        textEditor.forceActiveFocus();
-
-                    }
-                    onTextChanged: {
-                        textEditor.update()
-                    }
+                    console.log('|'+textEditor.path+'|'+(textEditor.path===''))
 
                 }
             }
 
         }
-    }
 
-    onStatusChanged: {
-        if (status === PageStatus.Deactivating) {
-            console.debug('onStatusChanged : PageStatus.Deactivating');
-            if (textEditor.modified===true) {
-                noteSaver.saveNote(textEditor.path, textEditor.text);
-                pyNotes.requireRefresh();
-            }
-        }
     }
 }
-
-
-

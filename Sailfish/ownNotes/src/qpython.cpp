@@ -307,19 +307,17 @@ QPython::fromPython(PyObject *o)
 PyObject *
 QPython::toPython(QVariant v)
 {
-    QVariant::Type type = v.type();
-
-    if (type == QVariant::Bool) {
+    if (v.type() == QVariant::Bool) {
         if (v.toBool()) {
             Py_RETURN_TRUE;
         } else {
             Py_RETURN_FALSE;
         }
-    } else if (type == QVariant::Int) {
+    } else if (v.type() == QVariant::Int) {
         return PyLong_FromLong(v.toInt());
-    } else if (type == QVariant::Double) {
+    } else if (v.type() == QVariant::Double) {
         return PyFloat_FromDouble(v.toDouble());
-    } else if (type == QVariant::List) {
+    } else if (v.canConvert(QVariant::List)) {
         QVariantList l = v.toList();
 
         PyObject *result = PyList_New(l.size());
@@ -327,10 +325,10 @@ QPython::toPython(QVariant v)
             PyList_SetItem(result, i, toPython(l[i]));
         }
         return result;
-    } else if (type == QVariant::String) {
+    } else if (v.type() == QVariant::String) {
         QByteArray utf8bytes = v.toString().toUtf8();
         return PyUnicode_FromString(utf8bytes.constData());
-    } else if (type == QVariant::Map) {
+    } else if (v.canConvert(QVariant::Map)) {
         QMap<QString,QVariant> m = v.toMap();
         QList<QString> keys = m.keys();
 

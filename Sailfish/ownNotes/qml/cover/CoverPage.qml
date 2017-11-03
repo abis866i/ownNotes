@@ -8,6 +8,8 @@ CoverBackground {
     property bool preview: (current !== "")
 
     Component.onCompleted: {
+        console.log("Component.onCompleted")
+
         current = pyNotes.get('Display', 'covernote');
     }
 

@@ -28,12 +28,18 @@ from settings import Settings
 from sync import Sync
 import logger
 
+
 INVALID_FILENAME_CHARS = '\/:*?"<>|'
 STRIPTAGS = re.compile(r'<[^>]+>')
+PATTERN_URL = re.compile(r'^http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+$')
+PATTERN_CATEGORY = re.compile(r'(^$|^[^\\/?%*:|"<>\.]+$)')
+PATTERN_FILENAME = re.compile(r'^[^\\/:\*\?"<>%\|]+$')
+
 STRIPHEAD = re.compile("<head>.*?</head>", re.DOTALL)
 EMPTYP = re.compile('<p style=\"-qt-paragraph-type:empty;.*(?=<p>)', re.DOTALL)
 
 NOTESPATH = os.path.expanduser('~/.ownnotes/')
+FILEEXTENSION = '.txt'
 
 COLOR_TITLE = '#441144'
 COLOR_LINK = '#115511'
@@ -163,6 +169,24 @@ def _uncolorize(text, strip=True):
                                                            '\n')))))
     return text.lstrip('\n')
 
+def saveNoteNew(category, name, text, colorized=True):
+    newPath = NOTESPATH
+    if category:
+        newPath = newPath + category + "/"
+
+    if not os.path.isdir(newPath):
+        os.makedirs(newPath)
+
+    newPath = newPath + name + FILEEXTENSION
+    if colorized:
+        text = _uncolorize(text)
+
+    os.remove(newPath) if os.path.exists(newPath) else None
+
+    with open(newPath, 'w', encoding='utf-8') as fh:
+        fh.write(text)
+
+    return newPath
 
 def saveNote(filepath, data, colorized=True):
     global sync
@@ -187,14 +211,14 @@ def saveNote(filepath, data, colorized=True):
         index = 1
         new_path = os.path.join(base_path,
                                 category,
-                                _getValidFilename(_title.strip()) + '.txt')
+                                _getValidFilename(_title.strip()) + FILEEXTENSION)
 
         while os.path.exists(new_path):
             new_path = os.path.join(base_path,
                                     category,
                                     _getValidFilename(_title.strip())
                                     + str(index)
-                                    + '.txt')
+                                    + FILEEXTENSION)
             index += 1
 
         try:
@@ -210,7 +234,7 @@ def saveNote(filepath, data, colorized=True):
     # Note pushing removed to avoid the app locking up
     # Perhaps this should be run in a different thread
     #try:
-    #    relpath = os.path.join(category, _getValidFilename(_title.strip()) + '.txt')
+    #    relpath = os.path.join(category, _getValidFilename(_title.strip()) + FILEEXTENSION)
     #    sync.push_note(relpath)
     #except Exception as err:
     #    logger.Logger().logger.error(str(err))
@@ -232,6 +256,26 @@ def loadNote(path, colorize=True):
         except Exception as err:
             raise Exception('File IO Error %s' % (str(err)))
     raise Exception('File IO Error')
+
+def getNoteBody(path, colorize=True):
+    if not path:
+        return ''
+
+    path = os.path.join(NOTESPATH, path)
+
+    with open(path, 'r', encoding='utf-8') as fh:
+        try:
+            text = fh.read()
+            title = os.path.splitext(
+                os.path.basename(path))[0]
+            if colorize:
+                return _colorize((text).replace('\r\n', '\n'))
+            else:
+                return text.replace('\r\n', '\n')
+        except Exception as err:
+            raise Exception('File IO Error %s' % (str(err)))
+    raise Exception('File IO Error')
+    return ''
 
 def loadPreview(path, colorize=False):
     path = os.path.join(NOTESPATH, path)
@@ -255,6 +299,23 @@ def nextNoteFile(current, offset=1):
     if current in notes:
         next = notes[(notes.index(current) + int(offset)) % len(notes)]
     return next
+
+def getNoteCategory(fileName):
+    if not fileName:
+        return ''
+    path=os.path.dirname(fileName)
+
+    category = os.path.relpath(path,os.path.abspath(NOTESPATH))
+    if category == '.':
+        category = ''
+    return category
+
+def getNoteName(fileName):
+     return os.path.basename(fileName)
+
+def getNoteNameNoExtension(fileName):
+    fileonly = os.path.basename(fileName)
+    return os.path.splitext(fileonly)[0]
 
 def listNotes(searchFilter):
     path = NOTESPATH
@@ -338,13 +399,13 @@ def getTitleFromPath(path):
 
 def createNote():
     inc = '1'
-    path = os.path.join(NOTESPATH, 'Untitled %s.txt' % inc)
+    path = os.path.join(NOTESPATH, 'Untitled'+inc+FILEEXTENSION)
     while os.path.exists(path):
         inc = str(int(inc) + 1)
-        path = os.path.join(NOTESPATH, 'Untitled %s.txt' % inc)
+        path = os.path.join(NOTESPATH, 'Untitled'+inc+FILEEXTENSION)
     with open(path, 'w'):
         os.utime(path, (time.time(), time.time()))
-    return os.path.join(NOTESPATH, 'Untitled %s.txt' % inc)
+    return os.path.join(NOTESPATH, 'Untitled'+inc+FILEEXTENSION)
 
 
 def getCategories():
@@ -365,7 +426,7 @@ def duplicate(path):
     import shutil
 
     dirname = os.path.dirname(path)
-    filename = os.path.splitext(os.path.basename(path))[0] + ' 2.txt'
+    filename = os.path.splitext(os.path.basename(path))[0] + ' 2'+FILEEXTENSION
     dst = os.path.join(dirname, filename)
     shutil.copy2(path, dst)
     return dst
@@ -449,6 +510,26 @@ def get_last_sync_datetime():
     global sync
     return sync.get_last_sync_datetime()
 
+def text_patern_url(text):
+    m = PATTERN_URL.match( text )
+    if m:
+        return True
+    else:
+        return False
+
+def text_patern_filename(text):
+    m = PATTERN_FILENAME.match( text )
+    if m:
+        return True
+    else:
+        return False
+
+def text_patern_category(text):
+    m = PATTERN_CATEGORY.match( text )
+    if m:
+        return True
+    else:
+        return False
 
 if __name__ == '__init__':
-    print(getCategoryFromPath(os.path.join(NOTESPATH, 'test', 'blabla.txt')))
+    print(getCategoryFromPath(os.path.join(NOTESPATH, 'test', 'blabla'+FILEEXTENSION)))

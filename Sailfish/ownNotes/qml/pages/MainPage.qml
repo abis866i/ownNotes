@@ -6,6 +6,7 @@ import net.khertan.python 1.0
 
 Page {
     id: page
+    backNavigation: false
     objectName: 'fileBrowserPage'
     property string searchText: ''
 
@@ -107,15 +108,9 @@ Page {
                 id: contextMenuComponent
                 ContextMenu {
                     MenuItem {
-                        text: qsTr("Show on cover")
+                        text: qsTr("Edit Note")
                         onClicked: {
-                            pyNotes.setCoverNote(model.relpath);
-                        }
-                    }
-                    MenuItem {
-                        text: qsTr("Category")
-                        onClicked: {
-                            pageStack.push(categoryPage,{path:model.path})
+                            onClicked: pageStack.push(Qt.resolvedUrl("EditPage.qml"), {path: path})
                         }
                     }
                     MenuItem {
@@ -135,8 +130,10 @@ Page {
             }
 
             onClicked: {
-                var editingPage = Qt.createComponent(Qt.resolvedUrl("EditPage.qml"));
-                pageStack.push(editingPage, {path: path});
+                console.log('ownNotes.onClicked: '+path)
+
+                var viewingPage = Qt.createComponent(Qt.resolvedUrl("ViewPage.qml"));
+                pageStack.push(viewingPage, {path: path});
             }
         }
     }
@@ -213,9 +210,7 @@ Page {
                 text: qsTr("New note")
                 onClicked: {
                     var path = pyNotes.createNote();
-                    pageStack.push(
-                                Qt.createComponent(Qt.resolvedUrl("EditPage.qml")),
-                                {path:path});
+                    pageStack.push(Qt.createComponent(Qt.resolvedUrl("EditPage.qml")),{path:path});
                 }
             }
 
@@ -225,17 +220,13 @@ Page {
 
         }
 
+
         PushUpMenu {
-            visible: false
+            visible: true
+
             MenuItem {
-                text: qsTr("New note")
-                onClicked: {
-                    var path = pyNotes.createNote();
-                    console.log('NEWPATH:'+path)
-                    pageStack.push(
-                                Qt.createComponent(Qt.resolvedUrl("EditPage.qml")),
-                                {path:path});
-                }
+                text: qsTr("Return to the Top")
+                onClicked: notesView.scrollToTop()
             }
         }
 
@@ -253,84 +244,6 @@ Page {
 
     }
 
-    Component {
-        id: categoryPage
-
-        Dialog {
-            //canAccept: selector.value != ''
-            acceptDestination: page
-            acceptDestinationAction: PageStackAction.Pop
-            property string path
-            property string category
-
-            ListModel {
-                id: categoryModel
-
-                function fill(data) {
-                    categoryModel.clear();
-
-                    // Python returns a list of dicts - we can simply append
-                    // each dict in the list to the list model
-                    for (var i=0; i<data.length; i++) {
-                        console.log(data[i]);
-                        categoryModel.append(data[i]);
-                    }
-                }
-
-                Component.onCompleted: {
-                    fill(pyNotes.getCategories());
-                }
-            }
-
-
-            Flickable {
-                // ComboBox requires a flickable ancestor
-                width: parent.width
-                height: parent.height
-                interactive: false
-
-                Column {
-                    width: parent.width
-
-                    DialogHeader {
-                        acceptText: selector.value
-                    }
-
-
-                    TextField {
-                        id: categoryField
-                        text:''
-                        width: parent.width
-                        onTextChanged:  {
-                            selector.value = text
-                        }
-                    }
-
-                    ComboBox {
-                        id: selector
-
-                        width: parent.width
-                        label: qsTr('Category:')
-                        currentIndex: -1
-
-                        menu: ContextMenu {
-                            Repeater {
-                                model: categoryModel
-
-                                MenuItem {
-                                    text: modelData
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            onAccepted: {
-                pyNotes.setCategory(path, selector.value)
-            }
-        }
-    }
 
     //State used to detect when we should refresh view
     onStatusChanged: {
@@ -345,11 +258,13 @@ Page {
         property string version:VERSION
         property string changelog:''
         property string firstPart:qsTr('A note-taking app with ownCloud and WebDav sync.') +
-                                    '<br><a href="http://www.flypig.co.uk/?to=ownnotes">' + qsTr('http://www.flypig.co.uk/?to=ownnotes') + '</a>' +
-                                    '<br><br>' + qsTr('By') +' Benoît HERVIER (Khertan)' +
+                                    '<br><a href="https://github.com/abis866i/ownNotes">' + qsTr('https://github.com/abis866i/ownNotes') + '</a>' +
                                     '<br><b>' + qsTr('Licensed under GPLv3') + '</b>'
         property string clprefix:   '<br><br><b>Changelog : </b><br><br>'
-        property string secondPart: '<br><b>Thanks to : </b>' +
+        property string secondPart: '<br><br>'+
+                                    'Forked from David Llewellyn-Jones (Flypig) <a href="https://github.com/llewelld/ownNotes">' + qsTr('https://github.com/llewelld/ownNotes') + '</a><br/>' +
+                                    'Forked from Benoît HERVIER (Khertan) <a href="http://www.flypig.co.uk/?to=ownnotes">' + qsTr('http://www.flypig.co.uk/?to=ownnotes') + '</a>' +
+                                    '<br><br><b>Thanks to : </b>' +
                                     '<ul>' +
                                     '<li>Thomas Renard for sync bug fixing</li>' +
                                     '<li>Radek Novacek</li>' +

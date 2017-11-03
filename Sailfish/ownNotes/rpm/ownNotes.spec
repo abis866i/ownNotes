@@ -13,7 +13,7 @@ Name:       ownNotes
 %{!?qtc_make:%define qtc_make make}
 %{?qtc_builddir:%define _builddir %qtc_builddir}
 Summary:    A note taking app with ownCloud Sync
-Version:    1.8.6
+Version:    1.9.3
 Release:    1
 Group:      Qt/Qt
 License:    LICENSE

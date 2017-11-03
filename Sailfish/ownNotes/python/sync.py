@@ -462,11 +462,16 @@ class Sync(object):
         except requests.exceptions.SSLError as err:
             raise SSLError('SSL Certificate is not valid, or is self signed')
 
+        except IOError:
+            raise ConnectionError('Failed to open url.')
+
         except Exception as err:
             import traceback
             self.logger.logger.error(traceback.format_exc())
             wdc.unlock()
-            raise err
+            raise Exception('Authentication failed. Check URL, user, and password.')
+
+            #raise err
 
         self._set_running(False)
         return True

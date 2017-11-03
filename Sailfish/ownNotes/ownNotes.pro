@@ -37,6 +37,7 @@ OTHER_FILES += qml/ownNotes.qml \
     qml/pages/InfoBanner.qml \
     qml/pages/FontComboBox.qml \
     qml/pages/EditPage.qml \
+    qml/pages/ViewPage.qml \
     qml/pages/AboutPage.qml \
     icons/* \
     i18n/*
@@ -64,10 +65,4 @@ SOURCES = qml/ownNotes.qml \
 RESOURCES +=
 
 TRANSLATIONS = i18n/ownNotes_en.ts \
-            i18n/ownNotes_ru.ts \
-            i18n/ownNotes_it.ts \
-            i18n/ownNotes_fr.ts \
-            i18n/ownNotes_fi.ts \
-            i18n/ownNotes_cn.ts \
-            i18n/ownNotes_no.ts \
-            i18n/ownNotes_nl.ts
+            i18n/ownNotes_fr.ts

@@ -88,7 +88,7 @@ MouseArea {
 
     Timer {
         id: autoClose
-        interval: 14000
+        interval: 4000
         running: false
         onTriggered: {
             root.hide()

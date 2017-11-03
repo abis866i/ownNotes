@@ -34,13 +34,13 @@ class Settings(object):
         ''' Write the default config'''
         self._settings = {
             'Display': {
-                'fontsize': 18,
+                'fontsize': 30,
                 'fontfamily': 'Nokia Pure',
                 'header': True,
-                'covernote' : '',
+                'covernote' : ''
             },
             'WebDav': {
-                'url': 'https://owncloud.khertan.net/remote.php/webdav/',
+                'url': 'https://my.owndrive.com/remote.php/webdav/',
                 'login': 'demo',
                 'password': '',
                 'remoteFolder': 'Notes',
@@ -55,8 +55,8 @@ class Settings(object):
                 'apikey': ''
             },
             'Scriptogram': {
-                'userid': '678909876',
-            },
+                'userid': '678909876'
+            }
         }
         return self._settings
 
@@ -64,15 +64,13 @@ class Settings(object):
         if not self._settings:
             self._settings = self._read
 
-        with open(os.path.expanduser('~/.ownnotes.conf'), 'w') \
-                as configfile:
+        with open(os.path.expanduser('~/.ownnotes.conf'), 'w') as configfile:
             json.dump(self._settings, configfile)
 
     def _read(self,):
         self._get_defaults()
         if os.path.exists(os.path.expanduser('~/.ownnotes.conf')):
-            with open(os.path.expanduser('~/.ownnotes.conf'), 'r') \
-                    as configfile:
+            with open(os.path.expanduser('~/.ownnotes.conf'), 'r') as configfile:
                     jsondata = json.load(configfile)
                     for k, v in list(jsondata.items()):
                         if type(v) is dict:
@@ -90,8 +88,7 @@ class Settings(object):
         if (section == 'WebDav' and option == 'password'):
             if os.path.exists('/etc/machine-id'):
                 with open('/etc/machine-id', 'r') as fh:
-                    aes = pyaes.AESModeOfOperationCTR(
-                        hashlib.sha256(fh.read().encode('utf-8')).digest())
+                    aes = pyaes.AESModeOfOperationCTR(hashlib.sha256(fh.read().encode('utf-8')).digest())
                     return aes.decrypt(self._settings[section][option])
 
         return self._settings[section][option]
@@ -103,10 +100,8 @@ class Settings(object):
         if (section == 'WebDav' and option == 'password'):
             if os.path.exists('/etc/machine-id'):
                 with open('/etc/machine-id', 'r') as fh:
-                    aes = pyaes.AESModeOfOperationCTR(
-                        hashlib.sha256(fh.read().encode('utf-8')).digest())
-                    self._settings[section][option] = \
-                        aes.encrypt(value)
+                    aes = pyaes.AESModeOfOperationCTR(hashlib.sha256(fh.read().encode('utf-8')).digest())
+                    self._settings[section][option] = aes.encrypt(value)
             else:
                 self._settings[section][option] = value
         else:
@@ -114,6 +109,12 @@ class Settings(object):
 
         self._write()
 
+    def text_patern_url(value):
+        c = httplib.HTTPConnection(value)
+        c.request("HEAD", '')
+        if c.getresponse().status == 200:
+           return True
+        return False
 
 if __name__ == '__main__':
     Settings()
