@@ -1,7 +1,7 @@
 Name: ownNotes
 Summary: A note taking app with ownCloud Sync
 Version: '1.9.3'
-Release: 1
+Release: 2
 Group: Qt/Qt
 URL: http://example.org/
 License: LICENSE

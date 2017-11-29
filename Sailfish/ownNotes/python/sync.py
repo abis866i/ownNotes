@@ -18,6 +18,7 @@ import os
 import threading
 from settings import Settings
 import time
+import re
 import json
 import rfc822py3 as rfc822
 import datetime
@@ -143,12 +144,9 @@ class WebdavClient(object):
 
         urlparsed = requests.utils.urlparse(self.url)
 
-        self.wc = tinydav.WebDAVClient(host=urlparsed.netloc,
-                                       protocol=urlparsed.scheme,
-                                       nosslcheck=self.nosslcheck)
+        self.wc = tinydav.WebDAVClient(host=urlparsed.netloc, protocol=urlparsed.scheme, nosslcheck=self.nosslcheck)
 
-        self.wc.setbasicauth(self.login.encode('utf-8'),
-                             self.passwd.encode('utf-8'))
+        self.wc.setbasicauth(self.login.encode('utf-8'), self.passwd.encode('utf-8'))
         self.time_delta = None
 
         local_time = datetime.datetime.utcnow()
@@ -157,26 +155,20 @@ class WebdavClient(object):
         if response is None:
             response = self.wc.options(self.basepath).headers.get('Date')
 
-        remote_datetime = \
-            rfc822.parsedate(response)
+        remote_datetime = rfc822.parsedate(response)
 
-        self.time_delta = time.mktime(local_time.utctimetuple()) \
-            - time.mktime(remote_datetime)
+        self.time_delta = time.mktime(local_time.utctimetuple()) - time.mktime(remote_datetime)
 
         self._check_notes_folder()
 
-        self.logger.logger.debug('Response :  %s',
-                                 response)
+        self.logger.logger.debug('Response :  %s', response)
 
-        self.logger.logger.info('Connected to %s : Time delta %s',
-                                urlparsed.netloc, str(self.time_delta))
+        self.logger.logger.info('Connected to %s : Time delta %s', urlparsed.netloc, str(self.time_delta))
 
         return self.time_delta
 
     def _check_notes_folder(self,):
-        response = self.wc.propfind(uri=self.basepath,
-                                    names=True,
-                                    depth=1)
+        response = self.wc.propfind(uri=self.basepath, names=True, depth=1)
         ownnotes_folder_exists = False
         ownnotes_remote_folder = self.get_abspath('')
         if response.real != 207:
@@ -184,40 +176,29 @@ class WebdavClient(object):
         else:
             is_connected = True
             for res in response:
-                self.logger.logger.debug('Check Notes Folder %s : %s',
-                                         ownnotes_remote_folder, res.href)
+                self.logger.logger.debug('Check Notes Folder %s : %s', ownnotes_remote_folder, res.href)
                 if (res.href == ownnotes_remote_folder):
                     ownnotes_folder_exists = True
             if not ownnotes_folder_exists:
                 with self.locktoken:
                     self.wc.mkcol(ownnotes_remote_folder)
-                    self.logger.logger.debug(
-                        'Exists or create mkcol : %s', ownnotes_remote_folder)
+                    self.logger.logger.debug('Exists or create mkcol : %s', ownnotes_remote_folder)
         return is_connected
 
     def exists_or_create(self, relpath):
-        self.logger.logger.debug(
-            'Exists or create %s' % self.get_abspath(relpath))
-        response = self.wc.propfind(uri=self.get_abspath('', asFolder=True),
-                                    names=True,
-                                    depth=1)
+        self.logger.logger.debug('Exists or create %s' % self.get_abspath(relpath))
+        response = self.wc.propfind(uri=self.get_abspath('', asFolder=True),names=True,depth=1)
 
         if response.real != 207:
             return False
         else:
             for res in response:
-                self.logger.logger.debug('Exists or create %s : %s',
-                                         self.get_abspath(relpath),
-                                         res.href.rstrip('/'))
-                if ((res.href == self.get_abspath(relpath))
-                        or (res.href.rstrip('/')
-                            == self.get_abspath(relpath))):
+                self.logger.logger.debug('Exists or create %s : %s',self.get_abspath(relpath),res.href.rstrip('/'))
+                if ((res.href == self.get_abspath(relpath)) or (res.href.rstrip('/')== self.get_abspath(relpath))):
                     return True
 
         with self.locktoken:
-            self.logger.logger.debug(
-                'Exists or create mkcol : %s',
-                self.get_abspath(relpath, asFolder=True))
+            self.logger.logger.debug('Exists or create mkcol : %s',self.get_abspath(relpath, asFolder=True))
             self.wc.mkcol(self.get_abspath(relpath, asFolder=True))
 
     def upload(self, relpath, fh):
@@ -263,54 +244,60 @@ class WebdavClient(object):
             raise NetworkError('Can\'t get mtime file on webdav host')
         else:
             for res in response:
-                return round(time.mktime(rfc822.parsedate(
-                    res.get('getlastmodified').text)))
+                return round(time.mktime(rfc822.parsedate(res.get('getlastmodified').text)))
 
     def get_files_index(self, path=''):
         index = {}
+        tmpdump = '';
 
-        abspath = self.get_abspath(path, asFolder=True)
-        response = self.wc.propfind(uri=abspath,
-                                    names=True,
-                                    depth='1')
-        # We can t use infinite depth some owncloud version
-        # didn t support it
+        try:
+            tmpdump = 'getting absolute path. '+path;
 
-        if response.real == 207:
-            for res in response:
-                if len(res.get('resourcetype').getchildren()) == 0:
-                    index[requests.utils.unquote(self.get_relpath(res.href))] \
-                        = round(time.mktime(rfc822.parsedate(
-                            res.get('getlastmodified').text)))
-                else:
-                    # Workarround for infinite depth
-                    if res.href != abspath:
-                        index.update(
-                            self.get_files_index(
-                                path=self.get_relpath(res.href)))
+            self.logger.logger.info(tmpdump);
+            abspath = self.get_abspath(path, asFolder=True)
+            self.logger.logger.info('...successful!');
 
-        elif response.real == 200:
-            raise NetworkError('Wrong answer from server')
+            response = self.wc.propfind(uri=abspath,names=True,depth='1')
+            tmpdump = 'resulting response is. '+str(response.real)+' '+abspath;
 
-        else:
-            raise NetworkError('Can\'t list file on webdav host')
+            # We can t use infinite depth some owncloud version didn t support it
+            if response.real == 207:
+                for res in response:
+                    if len(res.get('resourcetype').getchildren()) == 0:
+                        tmpdump = 'remove illegal character in remote file'+self.get_relpath(res.href);
+                        index[requests.utils.unquote( self.get_relpath(res.href) )] = round(time.mktime(rfc822.parsedate( res.get('getlastmodified').text)))
+                    else:
+                        # Workarround for infinite depth
+                        if res.href != abspath:
+                            tmpdump = 'remove illegal character in remote folder '+self.get_relpath(res.href);
+                            index.update( self.get_files_index( path=self.get_relpath(res.href) ))
+
+            elif response.real == 200:
+                raise NetworkError('Wrong answer from server: 200')
+
+            else:
+                raise NetworkError('Can\'t list file on webdav host')
+
+
+        except Exception as err:
+            import traceback
+            self.logger.logger.error(traceback.format_exc())
+            raise Exception(tmpdump)
+            #raise err
 
         return index
 
     def move(self, srcrelpath, dstrelpath):
         '''Move/Rename a note on webdav'''
         with self.locktoken:
-            self.logger.logger.debug('Move : %s -> %s',
-                                     self.get_abspath(srcrelpath),
-                                     self.get_abspath(srcrelpath))
+            self.logger.logger.debug('Move : %s -> %s',self.get_abspath(srcrelpath),self.get_abspath(srcrelpath))
             self.wc.move(self.get_abspath(srcrelpath),
                          self.get_abspath(dstrelpath),
                          depth='infinity',
                          overwrite=True)
 
     def lock(self, relpath=''):
-        '''ownCloud no longer supports WebDAV file LOCKs, so just set up an
-        empty interface'''
+        '''ownCloud no longer supports WebDAV file LOCKs, so just set up an empty interface'''
         self.locktoken = Fakelock()
         return
         # The original code to execute, if locking were implemented, follows
@@ -318,9 +305,7 @@ class WebdavClient(object):
         if relpath:
             self.locktoken = self.wc.lock(uri=abspath, timeout=60)
         else:
-            self.locktoken = self.wc.lock(uri=abspath,
-                                          depth='Infinity',
-                                          timeout=300)
+            self.locktoken = self.wc.lock(uri=abspath,depth='Infinity',timeout=300)
 
     def unlock(self, relpath=None):
         '''ownCloud no longer supports WebDAV file LOCKs, so we do nothing'''
@@ -363,18 +348,29 @@ class Sync(object):
         return True
 
     def sync(self):
+        tmpdump = '';
         wdc = WebdavClient(self.logger)
         try:
+            tmpdump = 'connecting to remote server.';
+            self.logger.logger.info(tmpdump);
             wdc.connect()
+            self.logger.logger.info(' ...successful!');
             time_delta = wdc.time_delta
 
             ldc = localClient(self.logger)
 
+            tmpdump = 'getting file index from remote server.';
+            self.logger.logger.info(tmpdump);
             # Get remote filenames and timestamps
             remote_filenames = wdc.get_files_index()
+            self.logger.logger.info('...successful!');
 
+            tmpdump = 'getting file index from local repository.';
             # Get local filenames and timestamps
+            self.logger.logger.info(tmpdump);
             local_filenames = ldc.get_files_index()
+            self.logger.logger.info('...successful!');
+            tmpdump = 'other sync error.';
 
             wdc.lock()
 
@@ -391,8 +387,7 @@ class Sync(object):
                         self._local_rm(ldc, filename)
                         del local_filenames[filename]
                     else:
-                        # Else we have a conflict local file is newer than
-                        # deleted one
+                        # Else we have a conflict local file is newer than deleted one
                         self._upload(wdc, ldc, filename)
 
             # Delete local file deleted
@@ -459,19 +454,12 @@ class Sync(object):
             # Unlock the collection
             wdc.unlock()
 
-        except requests.exceptions.SSLError as err:
-            raise SSLError('SSL Certificate is not valid, or is self signed')
-
-        except IOError:
-            raise ConnectionError('Failed to open url.')
-
         except Exception as err:
             import traceback
             self.logger.logger.error(traceback.format_exc())
             wdc.unlock()
-            raise Exception('Authentication failed. Check URL, user, and password.')
-
-            #raise err
+            #raise Exception(tmpdump)
+            raise err
 
         self._set_running(False)
         return True

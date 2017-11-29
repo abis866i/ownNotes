@@ -21,7 +21,13 @@ Page {
 
         PullDownMenu {
             MenuItem {
-                text: qsTr("Back to the Main Page")
+                text: qsTr("Edit Note")
+                onClicked: {
+                    onClicked: pageStack.push(Qt.resolvedUrl("EditPage.qml"), {path: path})
+                }
+            }
+            MenuItem {
+                text: qsTr("Back to Main")
                 onClicked: pageStack.push(Qt.resolvedUrl("MainPage.qml"))
             }
         }

@@ -93,7 +93,7 @@ Page {
                 text: textEditor.path ? pyNotes.getNoteBody(textEditor.path) : ''
 
                 onTextChanged: {
-                    console.log('|'+textEditor.path+'|'+(textEditor.path===''))
+                    //console.log('|'+textEditor.path+'|'+(textEditor.path===''))
 
                 }
             }

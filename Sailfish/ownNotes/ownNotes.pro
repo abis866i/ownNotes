@@ -65,4 +65,10 @@ SOURCES = qml/ownNotes.qml \
 RESOURCES +=
 
 TRANSLATIONS = i18n/ownNotes_en.ts \
+            i18n/ownnotes_cn.ts \
+            i18n/ownnotes_fi.ts \
+            i18n/ownNotes_it.ts \
+            i18n/ownnotes_nl.ts \
+            i18n/ownNotes_no.ts \
+            i18n/ownNotes_ru.ts \
             i18n/ownNotes_fr.ts
